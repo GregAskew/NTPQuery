@@ -20,10 +20,10 @@
     /// 3 - Alarm condition (clock not synchronized) 
     /// </summary>
     public enum LeapIndicatorDescription {
-        NoWarning,
-        LastMinute61,
-        LastMinute59,
-        Alarm
+        NoWarning = 0,
+        LastMinute61 = 1,
+        LastMinute59 = 2,
+        Alarm = 3
     }
 
     /// <summary>
@@ -36,12 +36,12 @@
     /// 0, 6, 7 - Reserved
     /// </summary>
     public enum ServerModeDescription {
-        SymmetricActive,
-        SymmetricPassive,
-        Client,
-        Server,
-        Broadcast,
-        Unknown
+        Unknown = 0,
+        SymmetricActive = 1,
+        SymmetricPassive = 2,
+        Client = 3,
+        Server = 4,
+        Broadcast = 5,
     }
 
     /// <summary>
@@ -49,13 +49,14 @@
     /// 0 - unspecified or unavailable
     /// 1 - primary reference (e.g. radio-clock)
     /// 2-15 - secondary reference (via NTP or SNTP)
-    /// 16-255 - reserved
+    /// 16 - unsynchronzied
+    /// 17-255 - reserved
     /// </summary>
     public enum StratumDescription {
-        Unspecified,
-        PrimaryReference,
-        SecondaryReference,
-        Reserved
+        Unspecified = 0,
+        PrimaryReference = 1,
+        SecondaryReference = 2,
+        Unsynchronized = 16
     }
     #endregion
 
@@ -126,11 +127,17 @@
         }
 
         /// <summary>
-        /// Precision of the clock
+        /// Precision of the clock.
+        /// 8-bit signed integer representing the precision of the system clock, in log2 seconds.
+        /// For eample, a value of -18 corresponds to a precision of about one microsecond.  
+        /// The precision can be determined when the service first starts up as the minimum
+        /// time of several iterations to read the system clock.
         /// </summary>
-        public TimeSpan Precision {
+        public double Precision {
             get {
-                return TimeSpan.FromSeconds(Math.Pow(2, (sbyte)NTPData[3]));
+                sbyte precisionByte = (sbyte)NTPData[3];
+                double precisionValue = Convert.ToDouble(precisionByte);
+                return precisionValue;
             }
         }
 
@@ -219,8 +226,6 @@
                     case 0: goto default;
                     case 6: goto default;
                     case 7: goto default;
-                    default:
-                        return ServerModeDescription.Unknown;
                     case 1:
                         return ServerModeDescription.SymmetricActive;
                     case 2:
@@ -231,6 +236,8 @@
                         return ServerModeDescription.Server;
                     case 5:
                         return ServerModeDescription.Broadcast;
+                    default:
+                        return ServerModeDescription.Unknown;
                 }
             }
         }
@@ -253,7 +260,8 @@
                 if (val == 0) return StratumDescription.Unspecified;
                 if (val == 1) return StratumDescription.PrimaryReference;
                 if (val <= 15) return StratumDescription.SecondaryReference;
-                return StratumDescription.Reserved;
+                if (val == 16) return StratumDescription.Unsynchronized;
+                return StratumDescription.Unspecified;
             }
         }
 
